@@ -44,6 +44,7 @@ func main() {
 				Prefix: reg.Prefix,
 				Labels: reg.Labels,
 				Type:   reg.Type,
+				Help:   reg.Help,
 			})
 			if err != nil {
 				httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, fmt.Sprintf("%d", http.StatusInternalServerError)).Inc()

@@ -18,6 +18,7 @@ type Metric struct {
 	Labels []map[string]string `json:"labels"`
 	Value  float64             `json:"value"`
 	Type   string              `json:"type"`
+	Help   string              `json:"help"`
 }
 
 type MetricCollector struct {
@@ -58,12 +59,15 @@ func (m *MetricStore) RegisterMetric(metric Metric) error {
 			}
 		}
 	}
+	if metric.Help == "" {
+		metric.Help = fmt.Sprintf("%s for metric %s", metric.Type, metric.Name)
+	}
 	switch metric.Type {
 	case "counter":
 		m.PromColectors[metricFullName] = MetricCollector{
 			PromMetric: prometheus.NewCounterVec(prometheus.CounterOpts{
 				Name: metric.Name,
-				Help: fmt.Sprintf("Counter for metric %s", metric.Name),
+				Help: metric.Help,
 			}, labelKeys),
 			Type: metric.Type,
 		}
@@ -71,7 +75,7 @@ func (m *MetricStore) RegisterMetric(metric Metric) error {
 		m.PromColectors[metricFullName] = MetricCollector{
 			PromMetric: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 				Name: metric.Name,
-				Help: fmt.Sprintf("Gauge for metric %s", metric.Name),
+				Help: metric.Help,
 			}, labelKeys),
 			Type: metric.Type,
 		}

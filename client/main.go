@@ -37,6 +37,7 @@ func main() {
 				Prefix:        "prefix_foo",
 				Type:          "counter",
 				CheckInterval: 60,
+				Help:          "This is a test metric",
 			}
 			reqBody, err = json.Marshal(reg)
 			if err != nil {
