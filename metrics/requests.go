@@ -6,6 +6,7 @@ type RegistrationRequest struct {
 	Prefix        string              `json:"prefix"`
 	Type          string              `json:"type"`
 	CheckInterval int                 `json:"check_interval"`
+	Help          string              `json:"help"`
 }
 
 type StoreRequest struct {
