@@ -40,7 +40,7 @@ func registerHooks(
 			OnStart: func(context.Context) error {
 
 				// start the http server
-				logger.Info("Listening on localhost:8080 for HTTP requests")
+				logger.Infof("Listening on localhost:%d for HTTP requests", httpPort)
 				go http.ListenAndServe(fmt.Sprintf(":%d", httpPort), mux)
 				return nil
 			},
