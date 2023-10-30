@@ -33,18 +33,17 @@ func main() {
 }
 
 func registerHooks(
-	lifecycle fx.Lifecycle, mux *http.ServeMux, logger *zap.SugaredLogger,
+	lifecycle fx.Lifecycle, mux *http.ServeMux, logger *zap.SugaredLogger, metricStore *metrics.MetricStore,
 ) {
 	lifecycle.Append(
 		fx.Hook{
 			OnStart: func(context.Context) error {
-
-				// start the http server
-				logger.Infof("Listening on localhost:%d for HTTP requests", httpPort)
 				go http.ListenAndServe(fmt.Sprintf(":%d", httpPort), mux)
+				metricStore.StartCron()
 				return nil
 			},
 			OnStop: func(context.Context) error {
+				metricStore.StopCron()
 				return logger.Sync()
 			},
 		},

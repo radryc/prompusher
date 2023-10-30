@@ -28,7 +28,7 @@ type RequestHandler struct {
 // New http handler
 func New(s *http.ServeMux, m *metrics.MetricStore) *RequestHandler {
 	h := RequestHandler{s, m}
-	p := prometheus.NewRegistry()
+	p := m.GetMetricsRegistry()
 	p.MustRegister(httpRequestsTotal)
 	h.registerRoutes(p)
 	return &h
@@ -52,17 +52,27 @@ func (h *RequestHandler) Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = h.metricStore.RegisterMetric(metrics.Metric{
+		m := metrics.Metric{
 			Name:   reg.MetricsName,
 			Prefix: reg.Prefix,
 			Labels: reg.Labels,
 			Type:   reg.Type,
 			Help:   reg.Help,
-		})
+		}
+		err = h.metricStore.RegisterMetric(m)
 		if err != nil {
 			httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, fmt.Sprintf("%d", http.StatusInternalServerError)).Inc()
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+		if len(reg.CheckSchedule) > 0 {
+			err = h.metricStore.RegisterPrefixTicker(reg.Prefix, reg.CheckSchedule)
+			if err != nil {
+				httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, fmt.Sprintf("%d", http.StatusInternalServerError)).Inc()
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				h.metricStore.UnregisterMetric(m)
+				return
+			}
 		}
 		httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, fmt.Sprintf("%d", http.StatusOK)).Inc()
 		w.WriteHeader(http.StatusOK)

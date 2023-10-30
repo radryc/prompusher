@@ -5,7 +5,7 @@ type RegistrationRequest struct {
 	Labels        []map[string]string `json:"labels"`
 	Prefix        string              `json:"prefix"`
 	Type          string              `json:"type"`
-	CheckInterval int                 `json:"check_interval"`
+	CheckSchedule string              `json:"check_schedule"`
 	Help          string              `json:"help"`
 }
 
