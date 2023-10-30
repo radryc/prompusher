@@ -36,7 +36,7 @@ func New(s *http.ServeMux, m *metrics.MetricStore) *RequestHandler {
 
 func (h *RequestHandler) registerRoutes(p *prometheus.Registry) {
 	h.mux.HandleFunc("/register", h.Register)
-	h.mux.HandleFunc("/store", h.Register)
+	h.mux.HandleFunc("/store", h.Store)
 	h.mux.Handle("/metrics", promhttp.HandlerFor(p, promhttp.HandlerOpts{
 		// Opt into OpenMetrics to support exemplars.
 		EnableOpenMetrics: true,

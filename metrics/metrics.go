@@ -3,9 +3,9 @@ package metrics
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/radryc/prompusher/prefix"
 	cron "github.com/robfig/cron/v3"
 )
 
@@ -39,21 +39,19 @@ type MetricCollector struct {
 
 type MetricStore struct {
 	PromColectors   map[string]MetricCollector // all prometheus metrics
-	prefixTicker    map[string]time.Time       // map of prefix and last time it was checked
-	prefixUpdated   map[string]time.Time       // map of prefix and last time it was updated
 	metricsRegistry *prometheus.Registry       // prometheus registry
 	metricsMutex    sync.Mutex                 //	mutex for metricsRegistry
 	Cron            *cron.Cron                 // cron
+	prefix          *prefix.Prefix             // Prefix checker
 }
 
 func NewMetricStore() *MetricStore {
 	m := &MetricStore{
 		PromColectors:   make(map[string]MetricCollector),
-		prefixTicker:    make(map[string]time.Time),
-		prefixUpdated:   make(map[string]time.Time),
 		metricsRegistry: prometheus.NewRegistry(),
 		metricsMutex:    sync.Mutex{},
 		Cron:            cron.New(),
+		prefix:          prefix.New(PrefixFailed),
 	}
 	m.metricsRegistry.MustRegister(PrefixFailed)
 	return m
@@ -90,7 +88,6 @@ func (m *MetricStore) RegisterMetric(metric Metric) error {
 			}, labelKeys),
 			Type: metric.Type,
 		}
-		m.prefixUpdated[metric.Prefix] = time.Now()
 	case "gauge":
 		m.PromColectors[metricFullName] = MetricCollector{
 			PromMetric: prometheus.NewGaugeVec(prometheus.GaugeOpts{
@@ -99,7 +96,6 @@ func (m *MetricStore) RegisterMetric(metric Metric) error {
 			}, labelKeys),
 			Type: metric.Type,
 		}
-		m.prefixUpdated[metric.Prefix] = time.Now()
 	default:
 		return fmt.Errorf("unknown metric type: %s", metric.Type)
 	}
@@ -120,42 +116,16 @@ func (m *MetricStore) UnregisterMetric(metric Metric) error {
 }
 
 func (m *MetricStore) RegisterPrefixTicker(prefix string, cronEntry string) error {
-	m.metricsMutex.Lock()
-	if _, ok := m.prefixTicker[prefix]; ok {
-		m.metricsMutex.Unlock()
-		return nil
+	if err := m.prefix.Add(prefix); err != nil {
+		return err
 	}
-	m.prefixTicker[prefix] = time.Now()
-	m.metricsMutex.Unlock()
-	_, err := m.Cron.AddFunc(cronEntry, m.CheckSchedule(prefix))
+	_, err := m.Cron.AddFunc(cronEntry, m.prefix.Check(prefix))
 	return err
 }
 
 func (m *MetricStore) UnregisterPrefixTicker(prefix string) error {
-	m.metricsMutex.Lock()
-	defer m.metricsMutex.Unlock()
-	if _, ok := m.prefixTicker[prefix]; !ok {
-		return nil
-	}
-	delete(m.prefixTicker, prefix)
+	m.prefix.Delete(prefix)
 	return nil
-}
-
-func (m *MetricStore) CheckSchedule(prefix string) func() {
-	m.metricsMutex.Lock()
-	defer m.metricsMutex.Unlock()
-	if _, ok := m.prefixTicker[prefix]; !ok {
-		return func() {}
-	}
-	return func() {
-		// TODO protect with separate rlock
-		// check if m.prefixUpdated[prefix] is older than m.prefixTicker[prefix]
-		if m.prefixUpdated[prefix].Before(m.prefixTicker[prefix]) {
-			// inc prefix failed counter
-			PrefixFailed.WithLabelValues(prefix).Inc()
-		}
-		m.prefixTicker[prefix] = time.Now()
-	}
 }
 
 func (m *MetricStore) StoreMetric(metric Metric) error {
@@ -182,16 +152,15 @@ func (m *MetricStore) StoreMetric(metric Metric) error {
 	switch m.PromColectors[metricFullName].Type {
 	case "counter":
 		m.PromColectors[metricFullName].PromMetric.(*prometheus.CounterVec).WithLabelValues(labelValues...).Add(metric.Value)
-		m.prefixUpdated[metric.Prefix] = time.Now()
+		m.prefix.Update(metric.Prefix)
 	case "gauge":
 		m.PromColectors[metricFullName].PromMetric.(*prometheus.GaugeVec).WithLabelValues(labelValues...).Set(metric.Value)
-		m.prefixUpdated[metric.Prefix] = time.Now()
+		m.prefix.Update(metric.Prefix)
 	default:
 		return fmt.Errorf("unknown metric type: %s", metric.Type)
 	}
 	return nil
 }
-
 func (m *MetricStore) GetMetricsRegistry() *prometheus.Registry {
 	return m.metricsRegistry
 }
