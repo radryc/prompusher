@@ -13,7 +13,7 @@ import (
 var (
 	httpRequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
+			Name: "prompusher_http_requests_total",
 			Help: "Total number of HTTP requests.",
 		},
 		[]string{"method", "path", "status"},
