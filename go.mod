@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/prometheus/client_golang v1.17.0
+	github.com/robfig/cron/v3 v3.0.1
 	go.uber.org/fx v1.20.1
 	go.uber.org/zap v1.26.0
 )

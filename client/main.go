@@ -36,7 +36,7 @@ func main() {
 				},
 				Prefix:        "prefix_foo",
 				Type:          "counter",
-				CheckInterval: 60,
+				CheckSchedule: "*/30 * * * 1,2,3,4,5", // every 30 minutes on weekdays
 				Help:          "This is a test metric",
 			}
 			reqBody, err = json.Marshal(reg)
