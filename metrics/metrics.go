@@ -115,15 +115,24 @@ func (m *MetricStore) UnregisterMetric(metric Metric) error {
 	return nil
 }
 
-func (m *MetricStore) RegisterPrefixTicker(prefix string, cronEntry string) error {
+func (m *MetricStore) RegisterPrefix(prefix string, cronEntry string) error {
 	if err := m.prefix.Add(prefix); err != nil {
 		return err
 	}
-	_, err := m.Cron.AddFunc(cronEntry, m.prefix.Check(prefix))
-	return err
+	cid, err := m.Cron.AddFunc(cronEntry, m.prefix.Check(prefix))
+	if err != nil {
+		return err
+	}
+	m.prefix.UpdateID(prefix, cid)
+	return nil
 }
 
-func (m *MetricStore) UnregisterPrefixTicker(prefix string) error {
+func (m *MetricStore) UnregisterPrefix(prefix string) error {
+	cid, err := m.prefix.GetID(prefix)
+	if err != nil {
+		return err
+	}
+	m.Cron.Remove(cid)
 	m.prefix.Delete(prefix)
 	return nil
 }

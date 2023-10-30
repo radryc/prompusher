@@ -66,7 +66,7 @@ func (h *RequestHandler) Register(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(reg.CheckSchedule) > 0 {
-			err = h.metricStore.RegisterPrefixTicker(reg.Prefix, reg.CheckSchedule)
+			err = h.metricStore.RegisterPrefix(reg.Prefix, reg.CheckSchedule)
 			if err != nil {
 				httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, fmt.Sprintf("%d", http.StatusInternalServerError)).Inc()
 				http.Error(w, err.Error(), http.StatusInternalServerError)
