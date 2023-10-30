@@ -16,7 +16,7 @@ const (
 var (
 	PrefixFailed = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "prefix_failed",
+			Name: "prompusher_prefix_failed",
 			Help: "Total number of failed prefix checks.",
 		},
 		[]string{"prefix"},
@@ -40,7 +40,7 @@ type MetricCollector struct {
 type MetricStore struct {
 	PromColectors   map[string]MetricCollector // all prometheus metrics
 	metricsRegistry *prometheus.Registry       // prometheus registry
-	metricsMutex    sync.Mutex                 //	mutex for metricsRegistry
+	metricsMutex    sync.Mutex                 // mutex for metricsRegistry
 	Cron            *cron.Cron                 // cron
 	prefix          *prefix.Prefix             // Prefix checker
 }
