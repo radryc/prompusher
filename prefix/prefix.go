@@ -1,10 +1,12 @@
 package prefix
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/robfig/cron/v3"
 )
 
 type Prefix struct {
@@ -12,6 +14,7 @@ type Prefix struct {
 	Updated      map[string]time.Time
 	mute         sync.RWMutex
 	prefixFailed *prometheus.CounterVec
+	cronIDs      map[string]cron.EntryID
 }
 
 func New(c *prometheus.CounterVec) *Prefix {
@@ -20,6 +23,7 @@ func New(c *prometheus.CounterVec) *Prefix {
 		make(map[string]time.Time),
 		sync.RWMutex{},
 		c,
+		make(map[string]cron.EntryID),
 	}
 	return &p
 }
@@ -55,6 +59,21 @@ func (p *Prefix) Check(prefix string) func() {
 	}
 }
 
+func (p *Prefix) UpdateID(prefix string, i cron.EntryID) {
+	p.mute.Lock()
+	defer p.mute.Unlock()
+	p.cronIDs[prefix] = i
+}
+
+func (p *Prefix) GetID(prefix string) (cron.EntryID, error) {
+	p.mute.RLock()
+	defer p.mute.RUnlock()
+	if i, ok := p.cronIDs[prefix]; ok {
+		return i, nil
+	}
+	return cron.EntryID(0), fmt.Errorf("cron id for prefix %s not found", prefix)
+}
+
 func (p *Prefix) Update(prefix string) {
 	p.mute.Lock()
 	defer p.mute.Unlock()
@@ -66,4 +85,5 @@ func (p *Prefix) Delete(prefix string) {
 	defer p.mute.Unlock()
 	delete(p.Checked, prefix)
 	delete(p.Updated, prefix)
+	delete(p.cronIDs, prefix)
 }
